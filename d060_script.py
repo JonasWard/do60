@@ -2,7 +2,7 @@ from typing import List
 from math import sin, cos, pi
 
 
-ARC_RESOLUTION = 16
+ARC_RESOLUTION = 8
 
 
 class Vector:
@@ -232,6 +232,16 @@ def create_polygon(radius, n_sides):
     return pts
 
 
+def subdivide_grids_n_times(grid, n):
+    for i in range(n):
+        n_grid = []
+        for p in grid:
+            n_grid.extend(grid_sub_d(p))
+        grid = n_grid
+
+    return grid
+
+
 def grid_sub_d(pts):
     c_p = Vector.get_center(pts)
 
@@ -342,30 +352,73 @@ def arc_voxel(base_pts, h0, h1, b0, b1, s0, s1):
     return msh
 
 
+def shape_generator():
+
+    sides = 7
+    mult = .8
+    inset = .05
+    side_mult = .2
+    # create polygon
+    plg = create_polygon(200, sides)
+
+    column_cells = []
+    center_cell = []
+    arc_cells = []
+
+    for i in range(sides):
+        p_0 = plg[(i - 1) % sides]
+        p_1 = plg[i]
+        p_2 = plg[(i + 1) % sides]
+        p_1_bis = p_1 * mult
+        p_2_bis = p_2 * mult
+
+        center_cell.append(p_1_bis)
+
+        d_0 = (p_1 - p_0)
+        d_1 = (p_2 - p_1)
+
+        p_int_0 = Vector(-d_0.y, d_0.x, 0) * inset + \
+            p_0 + d_0 * (1 - side_mult)
+        p_int_1 = Vector(-d_1.y, d_1.x, 0) * inset + p_1 + d_1 * side_mult
+        p_int_2 = Vector(-d_1.y, d_1.x, 0) * inset + \
+            p_1 + d_1 * (1 - side_mult)
+
+        column_cells.append([p_int_0, p_1, p_int_1, p_1_bis])
+        arc_cells.append([p_int_1, p_int_2, p_2_bis, p_1_bis])
+
+    single_arc_grid = arc_cells + [center_cell]
+
+    # subdivide a couple of times
+    column_cells = subdivide_grids_n_times(column_cells, 1)
+    arc_cells = subdivide_grids_n_times(arc_cells, 2)
+    center_cell = subdivide_grids_n_times([center_cell], 2)
+
+    hs = [0, 80, 60, 40, 30, 20, 30, 40, 60, 20, 10, 15, 10]
+    # partial sums of hs
+    height_map = [[sum(hs[:i]), sum(hs[:i + 1])] for i in range(1, len(hs))]
+
+    center_height = height_map[len(hs) - 5][0]
+
+    mshes = []
+    for [h0, h1] in height_map:
+        mshes.extend([arc_voxel(vs, h0, h1, 2.5, 4, .6, .8)
+                     for vs in column_cells])
+
+        if (h0 >= center_height):
+            mshes.extend([arc_voxel(vs, h0, h1, 2.5, 4, .6, .8)
+                         for vs in center_cell])
+            mshes.extend([arc_voxel(vs, h0, h1, 2.5, 4, .6, .8)
+                         for vs in arc_cells])
+
+    mshes.extend([arc_voxel(vs, 0, center_height, 2.5, 4, .6, .2)
+                 for vs in single_arc_grid])
+
+    # create the voxel
+    shape_mesh = Mesh.join_meshes(mshes)
+    shape_mesh.name = 'them_shape'
+    shape_mesh.as_obj()
+
+
 if __name__ == '__main__':
-    create_cube()
 
-    test_voxel = [Vector(0, 0, 0), Vector(1, 0, 0), Vector(1, 1, 0),
-                  Vector(0, 1, 0)]
-
-    arc_a = fit_arc(Vector.Origin(), Vector(1, 0, 0), Vector(0, 1, 0),
-                    Vector(0, 0, 2), Vector(0, 1, 0), Vector(0, 0, 2))
-
-    arc_b = fit_arc(Vector(1, 0, 0), Vector.Origin(), Vector(0, -1, 0),
-                    Vector(0, 0, 2), Vector(0, -1, 0), Vector(0, 0, 2))
-
-    Mesh.join_meshes([arc_a, arc_b], 'fitted_arc').as_obj()
-
-    test_voxel_bis = create_polygon(1, 5)
-    voxel_grid = grid_sub_d(test_voxel_bis)
-
-    create_voxel(test_voxel, 0, 1).as_obj()
-    arc_voxel(test_voxel, 0, 3, .2, .1, .4, .2).as_obj()
-    voxel_grid_mesh = Mesh.join_meshes(
-        [create_voxel(vs, 0, 3) for vs in voxel_grid])
-    voxel_grid_mesh.name = 'voxel_grid'
-    voxel_grid_mesh.as_obj()
-    arc_bis = Mesh.join_meshes(
-        [arc_voxel(vs, 0, 3, .2, .1, .4, .2) for vs in voxel_grid])
-    arc_bis.name = 'arc_voxel_bis'
-    arc_bis.as_obj()
+    shape_generator()
