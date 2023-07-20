@@ -256,6 +256,35 @@ def grid_sub_d(pts):
     return grid
 
 
+def polygon_mesh(pts, flip=False):
+    vertices = pts + [Vector.get_center(pts)]
+    faces = []
+    for i in range(len(pts)):
+        faces.append([i, (i - 1) % len(pts), len(pts)])
+
+    if flip:
+        faces = [face[::-1] for face in faces]
+
+    return Mesh('polygon_mesh', vertices, faces)
+
+
+def arc_side_profile(p00, p01, p10, p11, arc_pts, flip=False):
+    vertices = [p00, p01, p10, p11] + arc_pts
+    faces = [
+        [0, 1, len(vertices) - 1],  # top triangle
+        [2, 0, 6, 5],
+        [2, 5, 4, 3]
+    ]
+
+    for i in range(6, len(vertices) - 1):
+        faces.append([i, 0, i + 1])
+
+    if flip:
+        faces = [face[::-1] for face in faces]
+
+    return Mesh('arc_side_profile', vertices, faces)
+
+
 def arc_voxel(base_pts, h0, h1, b0, b1, s0, s1):
     c_p = Vector.get_center(base_pts)
     r_top_arc = (h1 - h0 - b1 - b0) * s1
@@ -297,6 +326,16 @@ def arc_voxel(base_pts, h0, h1, b0, b1, s0, s1):
 
         mshs.append(loft_pts(pts_a_a, pts_b_a, 'bottom_loft_a'))
         mshs.append(loft_pts(pts_a_b, pts_b_b, 'bottom_loft_b'))
+
+        # side profiles
+        mshs.append(arc_side_profile(Vector(p_a.x, p_a.y, h1), Vector(
+            b_p_a.x, b_p_a.y, h1), Vector(p_a.x, p_a.y, h0), Vector(b_p_a.x, b_p_a.y, h0), pts_a_a))
+        mshs.append(arc_side_profile(Vector(p_b.x, p_b.y, h1), Vector(b_p_a.x, b_p_a.y, h1), Vector(
+            p_b.x, p_b.y, h0), Vector(b_p_a.x, b_p_a.y, h0), pts_b_b, True))
+
+    # close top
+    mshs.append(polygon_mesh([Vector(p.x, p.y, h1) for p in base_pts], False))
+    mshs.append(polygon_mesh([Vector(p.x, p.y, h0) for p in base_pts], True))
 
     msh = Mesh.join_meshes(mshs, 'arc_voxel')
 
