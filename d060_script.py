@@ -102,7 +102,7 @@ def create_obj(mesh: Mesh):
     with open('/Users/jonasvandenbulcke/Documents/reps/do60/' + mesh.name + '.obj', 'w') as f:
         # write the vertices
         for v in mesh.vertices:
-            f.write('v {} {} {}\n'.format(v.x, v.y, v.z))
+            f.write('v {} {} {}\n'.format(v.x, v.z, v.y))
         if mesh.uvs != None:
             for uv in mesh.uvs:
                 f.write('vt {} {}\n'.format(uv[0], uv[1]))
@@ -113,7 +113,7 @@ def create_obj(mesh: Mesh):
         # write the faces
         for face in mesh.faces:
             f.write('f')
-            for f_i in face[::-1]:
+            for f_i in face:
                 f.write(' {}/{}/{}'.format(1 + f_i, 1 + f_i, 1 + f_i))
             f.write('\n')
 
