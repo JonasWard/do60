@@ -97,12 +97,13 @@ class Mesh:
         return Mesh('', [], [])
 
 
-def create_obj(mesh: Mesh):
+def create_obj(mesh: Mesh, scale=.001):
     # create a file
     with open('/Users/jonasvandenbulcke/Documents/reps/do60/' + mesh.name + '.obj', 'w') as f:
         # write the vertices
         for v in mesh.vertices:
-            f.write('v {} {} {}\n'.format(v.x, v.z, v.y))
+            f.write('v {} {} {}\n'.format(
+                v.x * scale, v.z * scale, v.y * scale))
         if mesh.uvs != None:
             for uv in mesh.uvs:
                 f.write('vt {} {}\n'.format(uv[0], uv[1]))
@@ -114,7 +115,8 @@ def create_obj(mesh: Mesh):
         for face in mesh.faces:
             f.write('f')
             for f_i in face:
-                f.write(' {}/{}/{}'.format(1 + f_i, 1 + f_i, 1 + f_i))
+                f.write(' {}'.format(1 + f_i))
+                # f.write(' {}/{}/{}'.format(1 + f_i, 1 + f_i, 1 + f_i))
             f.write('\n')
 
     return
